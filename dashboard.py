@@ -5,6 +5,8 @@ import queue
 import threading
 import time
 import tempfile
+import json
+import urllib.request
 
 import av
 import cv2
@@ -732,14 +734,39 @@ class DriverGuardVideoProcessor(VideoProcessorBase):
             self.shared.running = False
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_metered_ice_servers(domain, api_key):
+    """Fetch short-lived TURN credentials from a Metered account."""
+    url = (
+        f"https://{domain}/api/v1/turn/credentials"
+        f"?apiKey={api_key}"
+    )
+
+    with urllib.request.urlopen(url, timeout=6) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def get_rtc_configuration():
-    """STUN by default; add a TURN server from secrets when configured."""
+    """STUN plus a TURN relay configured through Streamlit secrets.
+
+    Supported secrets: [metered] domain/api_key, or [turn]
+    urls/username/credential.
+    """
     servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
 
     try:
+        metered = st.secrets.get("metered")
         turn = st.secrets.get("turn")
     except Exception:
-        turn = None
+        metered = turn = None
+
+    if metered:
+        try:
+            servers += fetch_metered_ice_servers(
+                metered["domain"], metered["api_key"]
+            )
+        except Exception as exc:
+            print(f"Could not fetch Metered TURN credentials: {exc}")
 
     if turn:
         servers.append({
@@ -747,9 +774,9 @@ def get_rtc_configuration():
             "username": turn["username"],
             "credential": turn["credential"],
         })
-    else:
-        # Shared public relay (Open Relay Project): fine for demos,
-        # rate-limited. Configure [turn] secrets for reliable use.
+
+    if len(servers) == 1:
+        # Shared public relay: demo only, may be unavailable.
         servers.append({
             "urls": [
                 "turn:openrelay.metered.ca:80",
