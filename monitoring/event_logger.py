@@ -28,12 +28,10 @@ class EventLogger:
         self.risk_file = self.log_dir / "risk_history.csv"
         self.sessions_file = self.log_dir / "sessions.csv"
 
-        # Session-specific file used by dashboard history.
+        # Session-specific event and summary files.
         self.session_events_file = (
             self.log_dir / f"events_{self.session_id}.csv"
         )
-
-        # Session summary file displayed by dashboard.py.
         self.summary_path = (
             self.log_dir / f"summary_{self.session_id}.csv"
         )
