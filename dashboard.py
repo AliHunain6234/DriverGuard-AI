@@ -775,6 +775,9 @@ def get_rtc_configuration():
             "credential": turn["credential"],
         })
 
+    if len(servers) == 1:
+        return None
+
     return {"iceServers": servers}
 
 
@@ -950,34 +953,30 @@ def live_dashboard():
 
     with camera_col:
         st.subheader("📹 Live Camera Feed")
-        ctx = webrtc_streamer(
-            key="driverguard-browser-camera",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration=get_rtc_configuration(),
-            video_processor_factory=DriverGuardVideoProcessor,
-            media_stream_constraints={
-                "video": {
-                    "width": {"ideal": 640},
-                    "height": {"ideal": 480},
-                    "frameRate": {"ideal": 15},
-                },
-                "audio": False,
-            },
-            video_html_attrs={
-                "controls": False,
-                "autoPlay": True,
-                "playsInline": True,
-                "muted": True,
-                "style": {
-                    "width": "100%",
-                    "borderRadius": "16px",
-                },
-            },
-            async_processing=True,
-        )
-
         @st.fragment(run_every=0.5)
-        def camera_status(ctx):
+        def camera_status():
+            ctx = webrtc_streamer(
+                key="driverguard-browser-camera",
+                mode=WebRtcMode.SENDRECV,
+                rtc_configuration=get_rtc_configuration(),
+                video_processor_factory=DriverGuardVideoProcessor,
+                media_stream_constraints={
+                    "video": True,
+                    "audio": False,
+                },
+                video_html_attrs={
+                    "controls": False,
+                    "autoPlay": True,
+                    "playsInline": True,
+                    "muted": True,
+                    "style": {
+                        "width": "100%",
+                        "borderRadius": "16px",
+                    },
+                },
+                async_processing=True,
+            )
+
             processor = ctx.video_processor
 
             if processor is not None:
@@ -1012,7 +1011,7 @@ def live_dashboard():
                     "Allow browser camera access to start live monitoring."
                 )
 
-        camera_status(ctx)
+        camera_status()
 
 
     @st.fragment(run_every=0.5)
