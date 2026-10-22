@@ -775,18 +775,6 @@ def get_rtc_configuration():
             "credential": turn["credential"],
         })
 
-    if len(servers) == 1:
-        # Shared public relay: demo only, may be unavailable.
-        servers.append({
-            "urls": [
-                "turn:openrelay.metered.ca:80",
-                "turn:openrelay.metered.ca:443",
-                "turn:openrelay.metered.ca:443?transport=tcp",
-            ],
-            "username": "openrelayproject",
-            "credential": "openrelayproject",
-        })
-
     return {"iceServers": servers}
 
 
