@@ -747,6 +747,18 @@ def get_rtc_configuration():
             "username": turn["username"],
             "credential": turn["credential"],
         })
+    else:
+        # Shared public relay (Open Relay Project): fine for demos,
+        # rate-limited. Configure [turn] secrets for reliable use.
+        servers.append({
+            "urls": [
+                "turn:openrelay.metered.ca:80",
+                "turn:openrelay.metered.ca:443",
+                "turn:openrelay.metered.ca:443?transport=tcp",
+            ],
+            "username": "openrelayproject",
+            "credential": "openrelayproject",
+        })
 
     return {"iceServers": servers}
 
