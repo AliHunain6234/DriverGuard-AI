@@ -916,184 +916,185 @@ def render_recent_events():
 # LIVE DASHBOARD
 # =========================================================
 
-camera_col, metrics_col = st.columns(
-    [1.45, 1], gap="large"
-)
-
-with camera_col:
-    st.subheader("📹 Live Camera Feed")
-    ctx = webrtc_streamer(
-        key="driverguard-browser-camera",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=get_rtc_configuration(),
-        video_processor_factory=DriverGuardVideoProcessor,
-        media_stream_constraints={
-            "video": {
-                "width": {"ideal": 640},
-                "height": {"ideal": 480},
-                "frameRate": {"ideal": 15},
-            },
-            "audio": False,
-        },
-        video_html_attrs={
-            "controls": False,
-            "autoPlay": True,
-            "playsInline": True,
-            "muted": True,
-            "style": {
-                "width": "100%",
-                "borderRadius": "16px",
-            },
-        },
-        async_processing=True,
+def live_dashboard():
+    camera_col, metrics_col = st.columns(
+        [1.45, 1], gap="large"
     )
 
-    @st.fragment(run_every=0.5)
-    def camera_status(ctx):
-        processor = ctx.video_processor
+    with camera_col:
+        st.subheader("📹 Live Camera Feed")
+        ctx = webrtc_streamer(
+            key="driverguard-browser-camera",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=get_rtc_configuration(),
+            video_processor_factory=DriverGuardVideoProcessor,
+            media_stream_constraints={
+                "video": {
+                    "width": {"ideal": 640},
+                    "height": {"ideal": 480},
+                    "frameRate": {"ideal": 15},
+                },
+                "audio": False,
+            },
+            video_html_attrs={
+                "controls": False,
+                "autoPlay": True,
+                "playsInline": True,
+                "muted": True,
+                "style": {
+                    "width": "100%",
+                    "borderRadius": "16px",
+                },
+            },
+            async_processing=True,
+        )
 
-        if processor is not None:
-            st.session_state.processor_ref = processor
-            st.session_state.last_session_id = processor.logger.session_id
+        @st.fragment(run_every=0.5)
+        def camera_status(ctx):
+            processor = ctx.video_processor
 
-            error = processor.shared.get_error()
-            if error:
-                st.error(error)
+            if processor is not None:
+                st.session_state.processor_ref = processor
+                st.session_state.last_session_id = processor.logger.session_id
 
-            metrics = processor.shared.get_metrics()
+                error = processor.shared.get_error()
+                if error:
+                    st.error(error)
 
-            if metrics:
-                st.session_state.last_metrics = metrics
-                st.session_state.risk_history = list(
-                    processor.risk_history
-                )
+                metrics = processor.shared.get_metrics()
 
-            if ctx.state.playing:
-                st.success("Camera connected · Monitoring active")
-                st.caption(
-                    "Eye and lip landmarks · Eye-closure analytics "
-                    "· Yawning detection · Head-pose tracking"
-                )
+                if metrics:
+                    st.session_state.last_metrics = metrics
+                    st.session_state.risk_history = list(
+                        processor.risk_history
+                    )
+
+                if ctx.state.playing:
+                    st.success("Camera connected · Monitoring active")
+                    st.caption(
+                        "Eye and lip landmarks · Eye-closure analytics "
+                        "· Yawning detection · Head-pose tracking"
+                    )
+                else:
+                    st.info(
+                        "Camera is initialized. Allow camera permission "
+                        "and wait for the video connection."
+                    )
             else:
                 st.info(
-                    "Camera is initialized. Allow camera permission "
-                    "and wait for the video connection."
+                    "Allow browser camera access to start live monitoring."
                 )
+
+        camera_status(ctx)
+
+
+    @st.fragment(run_every=0.5)
+    def metrics_panel():
+        st.subheader("📊 Driver Status")
+        metrics = st.session_state.last_metrics
+
+        if not metrics:
+            st.metric("Driver Risk Score", "—")
+            st.caption(
+                "Live measurements appear when the first frame "
+                "has been processed."
+            )
         else:
+            st.metric(
+                "Driver Risk Score",
+                f"{metrics['risk']}/100",
+            )
+
+            if metrics["status"] == "HIGH RISK":
+                st.error("🔴 HIGH RISK")
+            elif metrics["status"] == "MODERATE RISK":
+                st.warning("🟠 MODERATE RISK")
+            else:
+                st.success("🟢 LOW RISK")
+
+            a, b = st.columns(2)
+            a.metric(
+                "Eye Aspect Ratio",
+                f"{metrics['ear']:.3f}"
+                if metrics["ear"] is not None else "—",
+            )
+            b.metric(
+                "Mouth Aspect Ratio",
+                f"{metrics['mar']:.3f}"
+                if metrics["mar"] is not None else "—",
+            )
+
+            c, d = st.columns(2)
+            c.metric(
+                "Eyes Closed",
+                f"{metrics['closed_seconds']:.1f}s",
+            )
+            d.metric(
+                "Session Time",
+                f"{int(metrics['elapsed'] // 60):02d}:"
+                f"{int(metrics['elapsed'] % 60):02d}",
+            )
+
+            e, f = st.columns(2)
+            e.metric(
+                "Head Yaw",
+                f"{metrics['yaw']:.1f}°"
+                if metrics["yaw"] is not None else "—",
+            )
+            f.metric(
+                "Head Pitch",
+                f"{metrics['pitch']:.1f}°"
+                if metrics["pitch"] is not None else "—",
+            )
+
+            st.metric(
+                "Head Roll",
+                f"{metrics['roll']:.1f}°"
+                if metrics["roll"] is not None else "—",
+            )
+
+            if metrics["warning"] == "DROWSINESS ALERT":
+                st.audio(
+                    str(ALERT_SOUND_PATH),
+                    format="audio/wav",
+                    autoplay=True,
+                    loop=True,
+                )
+
             st.info(
-                "Allow browser camera access to start live monitoring."
+                f"**Alert:** {metrics['warning']}  \n"
+                f"**Face detected:** "
+                f"{'Yes' if metrics['face_present'] else 'No'}  \n"
+                f"**FPS:** {metrics['fps']:.1f}  \n"
+                f"**Logged events:** {metrics['event_count']}  \n"
+                f"**Eye closures:** {metrics['eye_closure_count']}  \n"
+                f"**Total closed time:** "
+                f"{metrics['eye_closure_total_seconds']:.1f}s"
             )
 
-    camera_status(ctx)
+
+    with metrics_col:
+        metrics_panel()
 
 
-@st.fragment(run_every=0.5)
-def metrics_panel():
-    st.subheader("📊 Driver Status")
-    metrics = st.session_state.last_metrics
+    @st.fragment(run_every=0.5)
+    def history_panel():
+        st.divider()
 
-    if not metrics:
-        st.metric("Driver Risk Score", "—")
-        st.caption(
-            "Live measurements appear when the first frame "
-            "has been processed."
-        )
-    else:
-        st.metric(
-            "Driver Risk Score",
-            f"{metrics['risk']}/100",
+        chart_col, events_col = st.columns(
+            [1.15, 1], gap="large"
         )
 
-        if metrics["status"] == "HIGH RISK":
-            st.error("🔴 HIGH RISK")
-        elif metrics["status"] == "MODERATE RISK":
-            st.warning("🟠 MODERATE RISK")
-        else:
-            st.success("🟢 LOW RISK")
+        with chart_col:
+            st.subheader("📈 Risk Trend")
+            render_history()
 
-        a, b = st.columns(2)
-        a.metric(
-            "Eye Aspect Ratio",
-            f"{metrics['ear']:.3f}"
-            if metrics["ear"] is not None else "—",
-        )
-        b.metric(
-            "Mouth Aspect Ratio",
-            f"{metrics['mar']:.3f}"
-            if metrics["mar"] is not None else "—",
-        )
-
-        c, d = st.columns(2)
-        c.metric(
-            "Eyes Closed",
-            f"{metrics['closed_seconds']:.1f}s",
-        )
-        d.metric(
-            "Session Time",
-            f"{int(metrics['elapsed'] // 60):02d}:"
-            f"{int(metrics['elapsed'] % 60):02d}",
-        )
-
-        e, f = st.columns(2)
-        e.metric(
-            "Head Yaw",
-            f"{metrics['yaw']:.1f}°"
-            if metrics["yaw"] is not None else "—",
-        )
-        f.metric(
-            "Head Pitch",
-            f"{metrics['pitch']:.1f}°"
-            if metrics["pitch"] is not None else "—",
-        )
-
-        st.metric(
-            "Head Roll",
-            f"{metrics['roll']:.1f}°"
-            if metrics["roll"] is not None else "—",
-        )
-
-        if metrics["warning"] == "DROWSINESS ALERT":
-            st.audio(
-                str(ALERT_SOUND_PATH),
-                format="audio/wav",
-                autoplay=True,
-                loop=True,
-            )
-
-        st.info(
-            f"**Alert:** {metrics['warning']}  \n"
-            f"**Face detected:** "
-            f"{'Yes' if metrics['face_present'] else 'No'}  \n"
-            f"**FPS:** {metrics['fps']:.1f}  \n"
-            f"**Logged events:** {metrics['event_count']}  \n"
-            f"**Eye closures:** {metrics['eye_closure_count']}  \n"
-            f"**Total closed time:** "
-            f"{metrics['eye_closure_total_seconds']:.1f}s"
-        )
+        with events_col:
+            st.subheader("⚠️ Recent Events")
+            render_recent_events()
 
 
-with metrics_col:
-    metrics_panel()
-
-
-@st.fragment(run_every=0.5)
-def history_panel():
-    st.divider()
-
-    chart_col, events_col = st.columns(
-        [1.15, 1], gap="large"
-    )
-
-    with chart_col:
-        st.subheader("📈 Risk Trend")
-        render_history()
-
-    with events_col:
-        st.subheader("⚠️ Recent Events")
-        render_recent_events()
-
-
-history_panel()
+    history_panel()
 
 
 # =========================================================
