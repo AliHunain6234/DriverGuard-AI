@@ -953,7 +953,7 @@ def live_dashboard():
 
     with camera_col:
         st.subheader("📹 Live Camera Feed")
-        @st.fragment(run_every=0.5)
+        @st.fragment(run_every=3)
         def camera_status():
             ctx = webrtc_streamer(
                 key="driverguard-browser-camera",
@@ -961,7 +961,11 @@ def live_dashboard():
                 rtc_configuration=get_rtc_configuration(),
                 video_processor_factory=DriverGuardVideoProcessor,
                 media_stream_constraints={
-                    "video": True,
+                    "video": {
+                        "width": {"ideal": 480},
+                        "height": {"ideal": 360},
+                        "frameRate": {"ideal": 15},
+                    },
                     "audio": False,
                 },
                 video_html_attrs={
@@ -1014,9 +1018,19 @@ def live_dashboard():
         camera_status()
 
 
-    @st.fragment(run_every=0.5)
+    @st.fragment(run_every=1)
     def metrics_panel():
         st.subheader("📊 Driver Status")
+
+        processor = st.session_state.processor_ref
+        if processor is not None:
+            latest = processor.shared.get_metrics()
+            if latest:
+                st.session_state.last_metrics = latest
+                st.session_state.risk_history = list(
+                    processor.risk_history
+                )
+
         metrics = st.session_state.last_metrics
 
         if not metrics:
@@ -1079,7 +1093,11 @@ def live_dashboard():
                 if metrics["roll"] is not None else "—",
             )
 
-            if metrics["warning"] == "DROWSINESS ALERT":
+            if (
+            metrics["warning"] == "DROWSINESS ALERT"
+            and processor is not None
+            and processor.shared.running
+        ):
                 st.audio(
                     str(ALERT_SOUND_PATH),
                     format="audio/wav",
@@ -1103,7 +1121,7 @@ def live_dashboard():
         metrics_panel()
 
 
-    @st.fragment(run_every=0.5)
+    @st.fragment(run_every=2)
     def history_panel():
         st.divider()
 
