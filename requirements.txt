@@ -5,6 +5,6 @@ mediapipe==0.10.21
 pygame==2.6.1
 streamlit==1.45.1
 streamlit-webrtc==0.62.4
-av
-pandas
-reportlab
+av==17.1.0
+pandas==2.3.3
+reportlab==5.0.1
