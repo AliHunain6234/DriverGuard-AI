@@ -4,4 +4,7 @@ opencv-contrib-python-headless==4.11.0.86
 mediapipe==0.10.21
 pygame==2.6.1
 streamlit==1.45.1
+streamlit-webrtc
+av
+pandas
 reportlab
