@@ -14,7 +14,10 @@ streamlit run dashboard.py
 ## Deploy on Streamlit Cloud
 
 - Main file: `dashboard.py`; Python version: 3.11.
-- Add a TURN server in the app's Secrets so the browser camera can connect:
+- Add a TURN server in the app's Secrets so the browser camera can connect.
+  Easiest: a free Metered account (metered.ca), then
+  `[metered]` with `domain = "yourapp.metered.live"` and `api_key = "..."`.
+  Or set a fixed server:
 
 ```toml
 [turn]
