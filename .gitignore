@@ -15,3 +15,10 @@ __pycache__/
 # Private or generated runtime data
 logs/*
 !logs/.gitkeep
+
+# Local tooling
+.claude/
+.agents/
+.vscode/
+monitoring/Backup/
+reports/

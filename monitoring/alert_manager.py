@@ -1,9 +1,14 @@
 from pathlib import Path
 
 import os
+import sys
 
 # Avoid pygame's startup banner.
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+
+# Servers have no sound card; the dashboard plays the alarm in the browser.
+if sys.platform.startswith("linux"):
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 try:
     import pygame
@@ -89,12 +94,5 @@ class AlertManager:
 
     def close(self):
         self.stop()
-
-        if pygame is not None:
-            try:
-                if pygame.mixer.get_init():
-                    pygame.mixer.quit()
-            except (pygame.error, OSError, RuntimeError):
-                pass
 
         self.audio_available = False
