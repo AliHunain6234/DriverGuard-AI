@@ -9,6 +9,7 @@ import json
 import urllib.request
 
 import av
+import numpy as np
 import cv2
 import mediapipe as mp
 import pandas as pd
@@ -247,35 +248,59 @@ INNER_LIP_CONTOUR = [
 
 
 def draw_eye_lip_landmarks(frame, landmarks):
+    """Draw clean eye and lip outlines instead of scattered dots."""
     if not landmarks:
         return frame
 
     height, width = frame.shape[:2]
+    thickness = 1 if width < 480 else 2
+    contour_color = (120, 255, 90)
+    dot_color = (255, 255, 255)
 
-    indices = (
-        set(LEFT_EYE)
-        | set(RIGHT_EYE)
-        | set(OUTER_LIP_CONTOUR)
-        | set(INNER_LIP_CONTOUR)
-    )
+    def points_for(indices):
+        points = []
 
-    for index in indices:
-        if not 0 <= index < len(landmarks):
+        for index in indices:
+            if not 0 <= index < len(landmarks):
+                return None
+
+            point = landmarks[index]
+            points.append((
+                int(round(point.x * width)),
+                int(round(point.y * height)),
+            ))
+
+        return np.array(points, dtype=np.int32)
+
+    for indices in (
+        LEFT_EYE,
+        RIGHT_EYE,
+        OUTER_LIP_CONTOUR,
+        INNER_LIP_CONTOUR,
+    ):
+        points = points_for(indices)
+
+        if points is None:
             continue
 
-        point = landmarks[index]
-        x = int(point.x * width)
-        y = int(point.y * height)
+        cv2.polylines(
+            frame,
+            [points],
+            True,
+            contour_color,
+            thickness,
+            cv2.LINE_AA,
+        )
 
-        if 0 <= x < width and 0 <= y < height:
-            cv2.circle(
-                frame,
-                (x, y),
-                2,
-                (0, 255, 0),
-                -1,
-                cv2.LINE_AA,
-            )
+    # Mark the eye corners to make blinks easy to follow.
+    for indices in (LEFT_EYE, RIGHT_EYE):
+        points = points_for((indices[0], indices[3]))
+
+        if points is None:
+            continue
+
+        for x, y in points:
+            cv2.circle(frame, (int(x), int(y)), 1, dot_color, -1, cv2.LINE_AA)
 
     return frame
 
