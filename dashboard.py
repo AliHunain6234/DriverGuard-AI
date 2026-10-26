@@ -641,7 +641,7 @@ class DriverGuardVideoProcessor(VideoProcessorBase):
             banner, color = "MONITORING ACTIVE", (50, 210, 100)
 
         compact = width < 480
-        header_h = 78 if compact else 76
+        header_h = 40 if compact else 76
 
         cv2.rectangle(
             frame, (0, 0), (width, header_h), (10, 20, 32), -1
@@ -652,15 +652,30 @@ class DriverGuardVideoProcessor(VideoProcessorBase):
         )
 
         if compact:
-            # Small frame: title on top, status badge on its own row.
+            # Small frame: title on the left, small status badge beside it.
+            title_font = cv2.FONT_HERSHEY_DUPLEX
+            (title_w, _), _ = cv2.getTextSize(
+                "DRIVERGUARD AI", title_font, 0.5, 1
+            )
             cv2.putText(
-                frame, "DRIVERGUARD AI", (10, 24),
-                cv2.FONT_HERSHEY_DUPLEX, 0.6,
+                frame, "DRIVERGUARD AI", (8, 26),
+                title_font, 0.5,
                 (245, 250, 255), 1, cv2.LINE_AA
             )
-            badge = (8, 36, width - 8, 70)
-            text_origin = (16, 59)
-            text_scale = 0.55
+
+            badge_x = title_w + 20
+            badge = (badge_x, 8, width - 6, 32)
+
+            text_scale = 0.42
+            while text_scale > 0.25:
+                (text_w, _), _ = cv2.getTextSize(
+                    banner, cv2.FONT_HERSHEY_SIMPLEX, text_scale, 1
+                )
+                if text_w <= badge[2] - badge[0] - 12:
+                    break
+                text_scale -= 0.02
+
+            text_origin = (badge_x + 6, 25)
         else:
             cv2.putText(
                 frame, "DRIVERGUARD AI", (18, 29),
