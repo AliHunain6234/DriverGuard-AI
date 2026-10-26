@@ -640,39 +640,53 @@ class DriverGuardVideoProcessor(VideoProcessorBase):
         else:
             banner, color = "MONITORING ACTIVE", (50, 210, 100)
 
+        compact = width < 480
+        header_h = 78 if compact else 76
+
         cv2.rectangle(
-            frame, (0, 0), (width, 76), (10, 20, 32), -1
+            frame, (0, 0), (width, header_h), (10, 20, 32), -1
         )
         cv2.line(
-            frame, (0, 76), (width, 76),
+            frame, (0, header_h), (width, header_h),
             (70, 210, 245), 2, cv2.LINE_AA
         )
 
-        cv2.putText(
-            frame, "DRIVERGUARD AI", (18, 29),
-            cv2.FONT_HERSHEY_DUPLEX, 0.72,
-            (245, 250, 255), 2, cv2.LINE_AA
-        )
-        cv2.putText(
-            frame, "INTELLIGENT DRIVER MONITORING", (19, 54),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.42,
-            (160, 190, 210), 1, cv2.LINE_AA
-        )
-
-        badge_width = min(250, max(150, width - 36))
-        badge_x = max(18, width - badge_width - 18)
+        if compact:
+            # Small frame: title on top, status badge on its own row.
+            cv2.putText(
+                frame, "DRIVERGUARD AI", (10, 24),
+                cv2.FONT_HERSHEY_DUPLEX, 0.6,
+                (245, 250, 255), 1, cv2.LINE_AA
+            )
+            badge = (8, 36, width - 8, 70)
+            text_origin = (16, 59)
+            text_scale = 0.55
+        else:
+            cv2.putText(
+                frame, "DRIVERGUARD AI", (18, 29),
+                cv2.FONT_HERSHEY_DUPLEX, 0.72,
+                (245, 250, 255), 2, cv2.LINE_AA
+            )
+            cv2.putText(
+                frame, "INTELLIGENT DRIVER MONITORING", (19, 54),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.42,
+                (160, 190, 210), 1, cv2.LINE_AA
+            )
+            badge_width = min(250, max(150, width - 36))
+            badge_x = max(18, width - badge_width - 18)
+            badge = (badge_x, 17, width - 18, 56)
+            text_origin = (badge_x + 9, 42)
+            text_scale = 0.40
 
         cv2.rectangle(
-            frame, (badge_x, 17), (width - 18, 56),
-            (25, 40, 54), -1
+            frame, badge[:2], badge[2:], (25, 40, 54), -1
         )
         cv2.rectangle(
-            frame, (badge_x, 17), (width - 18, 56),
-            color, 1
+            frame, badge[:2], badge[2:], color, 1
         )
         cv2.putText(
-            frame, banner, (badge_x + 9, 42),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.40,
+            frame, banner, text_origin,
+            cv2.FONT_HERSHEY_SIMPLEX, text_scale,
             color, 1, cv2.LINE_AA
         )
 
