@@ -965,7 +965,7 @@ def live_dashboard():
 
     with camera_col:
         st.subheader("📹 Live Camera Feed")
-        @st.fragment(run_every=0.5)
+        @st.fragment(run_every=5)
         def camera_status():
             ctx = webrtc_streamer(
                 key="driverguard-browser-camera",
@@ -973,7 +973,11 @@ def live_dashboard():
                 rtc_configuration=get_rtc_configuration(),
                 video_processor_factory=DriverGuardVideoProcessor,
                 media_stream_constraints={
-                    "video": True,
+                    "video": {
+                        "width": {"ideal": 320},
+                        "height": {"ideal": 240},
+                        "frameRate": {"ideal": 15},
+                    },
                     "audio": False,
                 },
                 video_html_attrs={
@@ -1130,7 +1134,7 @@ def live_dashboard():
         metrics_panel()
 
 
-    @st.fragment(run_every=2)
+    @st.fragment(run_every=3)
     def history_panel():
         st.divider()
 
