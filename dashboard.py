@@ -231,6 +231,8 @@ st.markdown(
 # LANDMARKS
 # =========================================================
 
+DETECTION_WIDTH = 320
+
 OUTER_LIP_CONTOUR = [
     61, 146, 91, 181, 84, 17, 314, 405,
     321, 375, 291, 409, 270, 269, 267, 0,
@@ -480,6 +482,16 @@ class DriverGuardVideoProcessor(VideoProcessorBase):
         height, width = frame.shape[:2]
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Landmarks are normalised, so detecting on a smaller copy is
+        # cheaper on shared cloud CPUs and gives the same coordinates.
+        if width > DETECTION_WIDTH:
+            rgb = cv2.resize(
+                rgb,
+                (DETECTION_WIDTH, int(height * DETECTION_WIDTH / width)),
+                interpolation=cv2.INTER_AREA,
+            )
+
         image = mp.Image(
             image_format=mp.ImageFormat.SRGB,
             data=rgb,
@@ -1091,6 +1103,7 @@ def live_dashboard():
 
             if (
             metrics["warning"] == "DROWSINESS ALERT"
+            and st.session_state.alarm_sound
             and processor is not None
             and processor.shared.running
         ):
@@ -1152,6 +1165,16 @@ with st.sidebar:
         "The WebRTC processor starts when the camera connects. "
         "Use the camera's Stop control to end the stream."
     )
+
+    st.session_state.setdefault("alarm_sound", True)
+    st.checkbox("🔊 Browser alarm sound", key="alarm_sound")
+
+    if st.button("🔔 Test alarm sound", use_container_width=True):
+        st.audio(
+            str(ALERT_SOUND_PATH),
+            format="audio/wav",
+            autoplay=True,
+        )
 
     if st.button(
         "↻ Refresh Dashboard",
